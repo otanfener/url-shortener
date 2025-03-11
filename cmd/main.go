@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/go-chi/chi/v5"
 	"github.com/otanfener/url-shortener/internal/counter"
-	"github.com/otanfener/url-shortener/internal/handler"
+	"github.com/otanfener/url-shortener/internal/server"
 	"github.com/otanfener/url-shortener/internal/service"
 	"github.com/otanfener/url-shortener/internal/storage"
 	"github.com/redis/go-redis/v9"
@@ -67,15 +65,10 @@ func main() {
 	// Initialize URL Shortener Service
 	urlShortenerService := service.NewService(dynamoDBStorage, redisCounter)
 
-	// Initialize HTTP Handlers
-	h := handler.NewHandler(urlShortenerService)
+	// Initialize HTTP server
+	httpServer := server.NewServer(urlShortenerService, nil)
+	if err := httpServer.Open(":" + appPort); err != nil {
+		log.Fatalf("failed to start server: %v", err)
+	}
 
-	// Setup Router
-	r := chi.NewRouter()
-	r.Post("/urls", h.ShortenURL)
-	r.Get("/{code}", h.RedirectURL)
-
-	// Start Server
-	fmt.Printf("Server is running on port %s\n", appPort)
-	log.Fatal(http.ListenAndServe(":"+appPort, r))
 }
