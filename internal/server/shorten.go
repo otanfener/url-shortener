@@ -25,14 +25,14 @@ func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req transport.ShortenURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.encoder.Error(ctx, w, err, http.StatusBadRequest)
+		h.encoder.ErrorResponse(ctx, w, err, http.StatusBadRequest)
 		return
 	}
 
 	dtoReq := dto.ShortenRequest{LongURL: req.LongURL}
 	shortCode, err := h.service.ShortenURL(dtoReq)
 	if err != nil {
-		h.encoder.Error(ctx, w, err, http.StatusInternalServerError)
+		h.encoder.ErrorResponse(ctx, w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -45,7 +45,7 @@ func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	longURL, err := h.service.RedirectURL(shortCode)
 	if err != nil {
-		h.encoder.Error(ctx, w, err, http.StatusInternalServerError)
+		h.encoder.ErrorResponse(ctx, w, err, http.StatusInternalServerError)
 		return
 	}
 	h.encoder.RedirectResponse(ctx, w, longURL, http.StatusFound)

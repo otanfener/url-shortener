@@ -2,8 +2,9 @@ package service
 
 import (
 	"errors"
-	"log"
+	"fmt"
 
+	"github.com/otanfener/url-shortener/internal/domain"
 	"github.com/otanfener/url-shortener/internal/service/dto"
 	"github.com/otanfener/url-shortener/pkg/base62"
 )
@@ -16,40 +17,48 @@ type storage interface {
 type counter interface {
 	NextID() (int64, error)
 }
-
+type logger interface {
+	Info(msg string, fields map[string]interface{})
+	Error(msg string, fields map[string]interface{})
+}
 type Service struct {
 	storage storage
 	counter counter
+	logger  logger
 }
 
-func NewService(s storage, c counter) *Service {
-	return &Service{storage: s, counter: c}
-
+func NewService(s storage, c counter, l logger) *Service {
+	return &Service{storage: s, counter: c, logger: l}
 }
 
 func (s *Service) ShortenURL(req dto.ShortenRequest) (string, error) {
-
 	if req.LongURL == "" {
-		return "", errors.New("long URL is required")
+		return "", fmt.Errorf("%w: long URL is required", domain.ErrInvalidInput)
 	}
-
 	var shortCode string
 
 	id, err := s.counter.NextID()
 	if err != nil {
-		log.Printf("failed to get next ID from counter: %v", err)
-		return "", err
+		s.logger.Error("failed to generate next ID", map[string]interface{}{"error": err.Error()})
+		return "", fmt.Errorf("%w: failed to generate next ID", domain.ErrCounterFailure)
 	}
 	shortCode = base62.Encode(id)
 
 	// Save URL mapping
-	if err := s.storage.SaveURLMapping(shortCode, req.LongURL); err != nil {
-		log.Printf("failed to save URL mapping in storage: %v", err)
-		return "", err
+	err = s.storage.SaveURLMapping(shortCode, req.LongURL)
+	if err != nil {
+		if errors.Is(err, domain.ErrStorageFailure) {
+			s.logger.Error("failed to save url mapping", map[string]interface{}{
+				"error":      err.Error(),
+				"short_code": shortCode,
+				"long_url":   req.LongURL},
+			)
+			return "", err
+		}
+		return "", fmt.Errorf("%w: failed to save URL mapping", domain.ErrInternal)
 	}
 	return shortCode, nil
 }
-
 func (s *Service) RedirectURL(code string) (string, error) {
 	return s.storage.GetLongURL(code)
 }

@@ -14,7 +14,7 @@ type service interface {
 }
 type logger interface {
 	Info(msg string, fields map[string]interface{})
-	Error(err error, fields map[string]interface{})
+	Error(msg string, fields map[string]interface{})
 }
 type Server struct {
 	service service

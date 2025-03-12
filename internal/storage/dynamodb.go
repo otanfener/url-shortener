@@ -2,11 +2,12 @@ package storage
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	_ "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/otanfener/url-shortener/internal/domain"
 )
 
 type DynamoDBStorage struct {
@@ -28,7 +29,10 @@ func (d *DynamoDBStorage) SaveURLMapping(shortCode, longURL string) error {
 			"long_url":   &types.AttributeValueMemberS{Value: longURL},
 		},
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("%w: failed to save URL mapping for short code: %s", domain.ErrStorageFailure, shortCode)
+	}
+	return nil
 }
 
 func (d *DynamoDBStorage) GetLongURL(shortCode string) (string, error) {
@@ -39,10 +43,10 @@ func (d *DynamoDBStorage) GetLongURL(shortCode string) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: failed to get long URL for short code: %s", domain.ErrStorageFailure, shortCode)
 	}
 	if output.Item == nil {
-		return "", errors.New("short code not found")
+		return "", domain.ErrShortCodeNotFound
 	}
 
 	return output.Item["long_url"].(*types.AttributeValueMemberS).Value, nil

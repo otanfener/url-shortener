@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/otanfener/url-shortener/internal/counter"
+	"github.com/otanfener/url-shortener/internal/logger"
 	"github.com/otanfener/url-shortener/internal/server"
 	"github.com/otanfener/url-shortener/internal/service"
 	"github.com/otanfener/url-shortener/internal/storage"
@@ -62,13 +63,15 @@ func main() {
 	})
 	redisCounter := counter.NewRedisCounter(redisClient)
 
+	appLogger := logger.NewLogger()
 	// Initialize URL Shortener Service
-	urlShortenerService := service.NewService(dynamoDBStorage, redisCounter)
+	urlShortenerService := service.NewService(dynamoDBStorage, redisCounter, appLogger)
 
 	// Initialize HTTP server
-	httpServer := server.NewServer(urlShortenerService, nil)
+	httpServer := server.NewServer(urlShortenerService, appLogger)
+	appLogger.Info("starting server", map[string]interface{}{"port": appPort})
 	if err := httpServer.Open(":" + appPort); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+		appLogger.Error("server error", map[string]interface{}{"error": err.Error()})
 	}
 
 }

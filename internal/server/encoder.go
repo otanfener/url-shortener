@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -35,14 +34,13 @@ func (e *Encoder) StatusResponse(ctx context.Context, w http.ResponseWriter, res
 	w.WriteHeader(status)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		e.logger.Error(fmt.Errorf("error encoding response"), map[string]interface{}{"error": err.Error()})
+		e.logger.Error("error encoding response", map[string]interface{}{"error": err.Error()})
 	}
 }
 
-// Error writes an error response with an appropriate HTTP status code.
-func (e *Encoder) Error(ctx context.Context, w http.ResponseWriter, err error, statusCode int) {
-	e.logger.Error(fmt.Errorf("handling error"), map[string]interface{}{"error": err.Error(), "status": statusCode})
-
+// ErrorResponse writes an error response with an appropriate HTTP status code.
+func (e *Encoder) ErrorResponse(ctx context.Context, w http.ResponseWriter, err error, statusCode int) {
+	e.logger.Error("handling error", map[string]interface{}{"error": err.Error(), "status": statusCode})
 	resp := errorResponse{
 		Message: err.Error(),
 	}
@@ -51,19 +49,19 @@ func (e *Encoder) Error(ctx context.Context, w http.ResponseWriter, err error, s
 	w.WriteHeader(statusCode)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		e.logger.Error(fmt.Errorf("error encoding response"), map[string]interface{}{"error": err.Error()})
+		e.logger.Error("error encoding response", map[string]interface{}{"error": err.Error()})
 	}
 }
 
 // RedirectResponse sends a redirect response with the appropriate status code.
 func (e *Encoder) RedirectResponse(ctx context.Context, w http.ResponseWriter, location string, statusCode int) {
 	if location == "" {
-		e.logger.Error(fmt.Errorf("empty redirect location"), nil)
-		http.Error(w, "Redirect location missing", http.StatusInternalServerError)
+		e.logger.Error("empty redirect location", nil)
+		http.Error(w, "redirect location missing", http.StatusInternalServerError)
 		return
 	}
 
-	e.logger.Info("Redirecting", map[string]interface{}{
+	e.logger.Info("redirecting", map[string]interface{}{
 		"location": location,
 		"status":   statusCode,
 	})
