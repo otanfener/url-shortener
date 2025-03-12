@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/otanfener/url-shortener/internal/service/dto"
 )
 
@@ -41,8 +42,11 @@ func (s *Server) Close() error {
 }
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
+	enc := NewEncoder(s.logger)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 	r.Route("/api", func(r chi.Router) {
-		h := NewHandler(s.service)
+		h := NewHandler(s.service, enc)
 		h.Routes(r)
 	})
 	return r

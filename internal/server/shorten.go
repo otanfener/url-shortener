@@ -11,42 +11,42 @@ import (
 
 type Handler struct {
 	service service
+	encoder *Encoder
 }
 
-func NewHandler(s service) *Handler {
-	return &Handler{service: s}
+func NewHandler(s service, e *Encoder) *Handler {
+	return &Handler{service: s, encoder: e}
 }
 func (h *Handler) Routes(router chi.Router) {
 	router.Post("/urls", h.ShortenURL)
 	router.Get("/{code}", h.RedirectURL)
 }
 func (h *Handler) ShortenURL(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req transport.ShortenURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request payload", http.StatusBadRequest)
+		h.encoder.Error(ctx, w, err, http.StatusBadRequest)
 		return
 	}
 
 	dtoReq := dto.ShortenRequest{LongURL: req.LongURL}
 	shortCode, err := h.service.ShortenURL(dtoReq)
 	if err != nil {
-		http.Error(w, "failed to shorten url", http.StatusInternalServerError)
+		h.encoder.Error(ctx, w, err, http.StatusInternalServerError)
 		return
 	}
 
 	resp := transport.ShortenURLResponse{ShortCode: shortCode}
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	h.encoder.StatusResponse(ctx, w, resp, http.StatusCreated)
 }
 
 func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	shortCode := chi.URLParam(r, "code")
+	ctx := r.Context()
 	longURL, err := h.service.RedirectURL(shortCode)
 	if err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		h.encoder.Error(ctx, w, err, http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, longURL, http.StatusFound)
+	h.encoder.RedirectResponse(ctx, w, longURL, http.StatusFound)
 }
